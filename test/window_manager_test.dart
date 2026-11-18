@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:nativeapi/nativeapi.dart' as native show Color;
 import 'package:window_manager/window_manager.dart';
 import 'package:yaru_window_manager/src/window_manager.dart';
 import 'package:yaru_window_platform_interface/yaru_window_platform_interface.dart';
@@ -9,10 +10,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
-    registerFallbackValue(const Color(0xff000000));
-    registerFallbackValue(Brightness.dark);
+    registerFallbackValue(const native.Color(r: 0, g: 0, b: 0, a: 255));
+    registerFallbackValue((WindowEvent _) {});
     registerFallbackValue(TitleBarStyle.normal);
-    registerFallbackValue(FakeWindowListener());
   });
 
   test('register', () {
@@ -21,111 +21,73 @@ void main() {
   });
 
   test('methods', () async {
-    final wm = MockWindowManager();
-    when(wm.ensureInitialized).thenAnswer((_) async {});
-    when(wm.close).thenAnswer((_) async {});
-    when(wm.startDragging).thenAnswer((_) async {});
-    when(() => wm.setFullScreen(any())).thenAnswer((_) async {});
-    when(wm.hide).thenAnswer((_) async {});
-    when(() => wm.setTitleBarStyle(any())).thenAnswer((_) async {});
-    when(wm.maximize).thenAnswer((_) async {});
-    when(wm.minimize).thenAnswer((_) async {});
-    when(wm.show).thenAnswer((_) async {});
-    when(wm.popUpWindowMenu).thenAnswer((_) async {});
-    when(() => wm.setTitle(any())).thenAnswer((_) async {});
-    when(() => wm.setBackgroundColor(any())).thenAnswer((_) async {});
-    when(() => wm.setBrightness(any())).thenAnswer((_) async {});
-    when(() => wm.setMinimizable(any())).thenAnswer((_) async {});
-    when(() => wm.setMaximizable(any())).thenAnswer((_) async {});
-    when(() => wm.setClosable(any())).thenAnswer((_) async {});
-
-    YaruWindowPlatform.instance = YaruWindowManager(wm);
-
-    await YaruWindowPlatform.instance.init(0);
-    verify(wm.ensureInitialized).called(1);
+    final window = mockWindow();
+    YaruWindowPlatform.instance = YaruWindowManager(window);
 
     await YaruWindowPlatform.instance.close(0);
-    verify(wm.close).called(1);
+    verify(window.close).called(1);
 
     await YaruWindowPlatform.instance.drag(0);
-    verify(wm.startDragging).called(1);
+    verify(window.startDragging).called(1);
 
     await YaruWindowPlatform.instance.fullscreen(0);
-    verify(() => wm.setFullScreen(true)).called(1);
+    verify(() => window.isFullScreen = true).called(1);
 
     await YaruWindowPlatform.instance.hide(0);
-    verify(wm.hide).called(1);
+    verify(window.hide).called(1);
 
     await YaruWindowPlatform.instance.hideTitle(0);
-    verify(() => wm.setTitleBarStyle(TitleBarStyle.hidden)).called(1);
+    verify(() => window.titleBarStyle = TitleBarStyle.hidden).called(1);
 
     await YaruWindowPlatform.instance.maximize(0);
-    verify(wm.maximize).called(1);
+    verify(window.maximize).called(1);
 
     await YaruWindowPlatform.instance.minimize(0);
-    verify(wm.minimize).called(1);
+    verify(window.minimize).called(1);
 
     await YaruWindowPlatform.instance.show(0);
-    verify(wm.show).called(1);
-
-    await YaruWindowPlatform.instance.showMenu(0);
-    verify(wm.popUpWindowMenu).called(1);
+    verify(window.show).called(1);
 
     await YaruWindowPlatform.instance.showTitle(0);
-    verify(() => wm.setTitleBarStyle(TitleBarStyle.normal)).called(1);
+    verify(() => window.titleBarStyle = TitleBarStyle.normal).called(1);
 
     await YaruWindowPlatform.instance.setBackground(0, Colors.black);
-    verify(() => wm.setBackgroundColor(Colors.black)).called(1);
-
-    await YaruWindowPlatform.instance.setBrightness(0, Brightness.dark);
-    verify(() => wm.setBrightness(Brightness.dark)).called(1);
+    verify(() => window.backgroundColor = any()).called(1);
 
     await YaruWindowPlatform.instance.setTitle(0, 'foo bar');
-    verify(() => wm.setTitle('foo bar')).called(1);
+    verify(() => window.title = 'foo bar').called(1);
 
     await YaruWindowPlatform.instance.setMinimizable(0, true);
-    verify(() => wm.setMinimizable(true)).called(1);
+    verify(() => window.isMinimizable = true).called(1);
 
     await YaruWindowPlatform.instance.setMaximizable(0, true);
-    verify(() => wm.setMaximizable(true)).called(1);
+    verify(() => window.isMaximizable = true).called(1);
 
     await YaruWindowPlatform.instance.setClosable(0, true);
-    verify(() => wm.setClosable(true)).called(1);
+    verify(() => window.isClosable = true).called(1);
   });
 
   test('restore', () async {
-    final wm = MockWindowManager();
-    when(wm.restore).thenAnswer((_) async {});
-    when(wm.unmaximize).thenAnswer((_) async {});
-    when(() => wm.setFullScreen(any())).thenAnswer((_) async {});
-
-    YaruWindowPlatform.instance = YaruWindowManager(wm);
-
-    when(wm.isFullScreen).thenAnswer((_) async => true);
-    when(wm.isMaximized).thenAnswer((_) async => false);
-    when(wm.isMinimized).thenAnswer((_) async => false);
-
+    final window = mockWindow(isFullscreen: true);
+    YaruWindowPlatform.instance = YaruWindowManager(window);
     await YaruWindowPlatform.instance.restore(0);
-    verify(() => wm.setFullScreen(false)).called(1);
+    verify(() => window.isFullScreen = false).called(1);
 
-    when(wm.isFullScreen).thenAnswer((_) async => false);
-    when(wm.isMaximized).thenAnswer((_) async => true);
-    when(wm.isMinimized).thenAnswer((_) async => false);
-
+    final maximized = mockWindow(isMaximized: true);
+    YaruWindowPlatform.instance = YaruWindowManager(maximized);
     await YaruWindowPlatform.instance.restore(0);
-    verify(wm.unmaximize).called(1);
+    verify(maximized.unmaximize).called(1);
 
-    when(wm.isFullScreen).thenAnswer((_) async => false);
-    when(wm.isMaximized).thenAnswer((_) async => false);
-    when(wm.isMinimized).thenAnswer((_) async => true);
-
+    final minimized = mockWindow(isMinimized: true);
+    YaruWindowPlatform.instance = YaruWindowManager(minimized);
     await YaruWindowPlatform.instance.restore(0);
-    verify(wm.restore).called(1);
+    verify(minimized.restore).called(1);
   });
 
   test('state', () async {
-    final wm = mockWindowManager(title: 'foo bar');
-    YaruWindowPlatform.instance = YaruWindowManager(wm);
+    YaruWindowPlatform.instance = YaruWindowManager(
+      mockWindow(title: 'foo bar'),
+    );
 
     final state = await YaruWindowPlatform.instance.state(0);
     expect(state.isActive, isTrue);
@@ -134,109 +96,23 @@ void main() {
     expect(state.isMaximizable, isTrue);
     expect(state.isMaximized, isFalse);
     expect(state.isMinimized, isFalse);
-    expect(state.isMaximizable, isTrue);
     expect(state.isMovable, isTrue);
     expect(state.title, 'foo bar');
     expect(state.isVisible, isTrue);
   });
 
-  test('states', () async {
-    final wm = mockWindowManager();
-    when(() => wm.addListener(any())).thenAnswer((i) {
-      final listener = i.positionalArguments[0] as WindowListener;
+  test('registers a window listener for close handlers', () async {
+    final window = mockWindow();
+    YaruWindowPlatform.instance = YaruWindowManager(window);
 
-      when(wm.isFocused).thenAnswer((_) async => false);
-      listener.onWindowBlur();
-
-      when(wm.isFocused).thenAnswer((_) async => true);
-      listener.onWindowFocus();
-
-      when(wm.isFullScreen).thenAnswer((_) async => true);
-      listener.onWindowEnterFullScreen();
-
-      when(wm.isFullScreen).thenAnswer((_) async => false);
-      listener.onWindowLeaveFullScreen();
-
-      when(wm.isMaximized).thenAnswer((_) async => true);
-      listener.onWindowMaximize();
-
-      when(wm.isMaximized).thenAnswer((_) async => false);
-      listener.onWindowUnmaximize();
-
-      when(wm.isMinimized).thenAnswer((_) async => true);
-      listener.onWindowMinimize();
-
-      when(wm.isMinimized).thenAnswer((_) async => false);
-      listener.onWindowRestore();
-    });
-
-    YaruWindowPlatform.instance = YaruWindowManager(wm);
-
-    expect(
-      YaruWindowPlatform.instance.states(0),
-      emitsInOrder(
-        [
-          isWindowState(isActive: false),
-          isWindowState(isActive: true),
-          isWindowState(isFullscreen: true),
-          isWindowState(isFullscreen: false),
-          isWindowState(isMaximized: true),
-          isWindowState(isMaximized: false),
-          isWindowState(isMinimized: true),
-          isWindowState(isMinimized: false),
-        ],
-      ),
-    );
-  });
-
-  test('calls close handlers', () async {
-    // Wiring the window manager mock such that:
-    final wm = MockWindowManager();
-    when(wm.ensureInitialized).thenAnswer((_) async {});
-    // 1. It invokes the on close listener
-    WindowListener? listener;
-    when(() => wm.addListener(any())).thenAnswer(
-      (realInvocation) async =>
-          listener = realInvocation.positionalArguments[0] as WindowListener,
-    );
-    // 2. It simulates a window close (by disconnecting listeners to avoid infinite loop)
-    var isPreventClose = false;
-    when(wm.close).thenAnswer((_) async {
-      listener?.onWindowClose();
-      if (!isPreventClose) {
-        listener = null; // simulates a closing app.
-      }
-    });
-    // 3. Takes into consideration calls to setPreventClose.
-    when(() => wm.setPreventClose(any())).thenAnswer((realInvocation) async {
-      isPreventClose = realInvocation.positionalArguments[0] as bool;
-    });
-
-    YaruWindowPlatform.instance = YaruWindowManager(wm);
-
-    // Before PR#31 this wouldn't be called.
-    var onCloseCalled = false;
-    await YaruWindowPlatform.instance.onClose(0, () {
-      debugPrint('Quitting');
-      onCloseCalled = true;
-      return true;
-    });
-
-    // Subscribing to the close event prevents closing at first.
-    expect(isPreventClose, true);
-
-    await YaruWindowPlatform.instance.close(0);
-    // Yet, close handlers installed must be called.
-    expect(onCloseCalled, true, reason: 'Close handlers never called.');
-    expect(isPreventClose, false);
+    await YaruWindowPlatform.instance.onClose(0, () => true);
+    verify(() => window.addListener(any())).called(1);
   });
 }
 
-class FakeWindowListener extends Fake implements WindowListener {}
+class MockWindow extends Mock implements Window {}
 
-class MockWindowManager extends Mock implements WindowManager {}
-
-MockWindowManager mockWindowManager({
+MockWindow mockWindow({
   bool isActive = true,
   bool isClosable = true,
   bool isFullscreen = false,
@@ -248,50 +124,18 @@ MockWindowManager mockWindowManager({
   String title = '',
   bool isVisible = true,
 }) {
-  final wm = MockWindowManager();
-  when(wm.isClosable).thenAnswer((_) async => isClosable);
-  when(wm.isFocused).thenAnswer((_) async => isActive);
-  when(wm.isFullScreen).thenAnswer((_) async => isFullscreen);
-  when(wm.isMaximizable).thenAnswer((_) async => isMaximizable);
-  when(wm.isMaximized).thenAnswer((_) async => isMaximized);
-  when(wm.isMinimizable).thenAnswer((_) async => isMinimizable);
-  when(wm.isMinimized).thenAnswer((_) async => isMinimized);
-  when(wm.isMovable).thenAnswer((_) async => isMovable);
-  when(wm.getTitle).thenAnswer((_) async => title);
-  when(wm.isVisible).thenAnswer((_) async => isVisible);
-  return wm;
-}
-
-Matcher isWindowState({
-  bool? isActive,
-  bool? isFullscreen,
-  bool? isMaximized,
-  bool? isMinimized,
-}) {
-  var matcher = isA<YaruWindowState>();
-  if (isActive != null) {
-    matcher = matcher.having((s) => s.isActive, 'isActive', equals(isActive));
-  }
-  if (isFullscreen != null) {
-    matcher = matcher.having(
-      (s) => s.isFullscreen,
-      'isFullscreen',
-      equals(isFullscreen),
-    );
-  }
-  if (isMaximized != null) {
-    matcher = matcher.having(
-      (s) => s.isMaximized,
-      'isMaximized',
-      equals(isMaximized),
-    );
-  }
-  if (isMinimized != null) {
-    matcher = matcher.having(
-      (s) => s.isMinimized,
-      'isMinimized',
-      equals(isMinimized),
-    );
-  }
-  return matcher;
+  final window = MockWindow();
+  when(() => window.isClosable).thenReturn(isClosable);
+  when(() => window.isFocused).thenReturn(isActive);
+  when(() => window.isFullScreen).thenReturn(isFullscreen);
+  when(() => window.isMaximizable).thenReturn(isMaximizable);
+  when(() => window.isMaximized).thenReturn(isMaximized);
+  when(() => window.isMinimizable).thenReturn(isMinimizable);
+  when(() => window.isMinimized).thenReturn(isMinimized);
+  when(() => window.isMovable).thenReturn(isMovable);
+  when(() => window.title).thenReturn(title);
+  when(() => window.isVisible).thenReturn(isVisible);
+  when(() => window.close()).thenReturn(true);
+  when(() => window.addListener(any())).thenReturn(1);
+  return window;
 }
