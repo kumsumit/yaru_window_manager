@@ -15,44 +15,53 @@ class YaruWindowManager extends YaruWindowPlatform {
     YaruWindowPlatform.instance = YaruWindowManager();
   }
 
-  _YaruWindowStatesListener? __statesListener;
-  _YaruWindowStatesListener get _listener =>
-      __statesListener ??= _YaruWindowStatesListener(_window);
+  final _statesListeners = <int, _YaruWindowStatesListener>{};
+  _YaruWindowStatesListener _listener(int id) =>
+      _statesListeners[id] ??= _YaruWindowStatesListener(_w(id));
 
-  _YaruWindowOnCloseListener? __closeListener;
-  _YaruWindowOnCloseListener get _closeListener =>
-      __closeListener ??= _YaruWindowOnCloseListener(_window);
+  final _closeListeners = <int, _YaruWindowOnCloseListener>{};
+  _YaruWindowOnCloseListener _closeListener(int id) =>
+      _closeListeners[id] ??= _YaruWindowOnCloseListener(_w(id));
 
-  Window? __window;
-  Window? get _window =>
-      __window ??= _guard<Window?>(() => WindowManager.instance.getCurrent());
+  final Window? __window;
+
+  /// Resolves the native window for the given [id]. Id 0 is the app's current
+  /// window; any other id is looked up among the native windows.
+  Window? _w(int id) {
+    if (__window != null) return __window;
+    return _guard<Window?>(
+      () => id == 0
+          ? WindowManager.instance.getCurrent()
+          : WindowManager.instance.get(id),
+    );
+  }
 
   @override
   Future<void> init(int id) async {}
 
   @override
-  Future<void> close(int id) async => _window?.invokeMethod((w) => w.close());
+  Future<void> close(int id) async => _w(id)?.invokeMethod((w) => w.close());
   @override
   Future<void> drag(int id) async =>
-      _window?.invokeMethod((w) => w.startDragging());
+      _w(id)?.invokeMethod((w) => w.startDragging());
   @override
   Future<void> fullscreen(int id) async =>
-      _window?.invokeMethod((w) => w.isFullScreen = true);
+      _w(id)?.invokeMethod((w) => w.isFullScreen = true);
   @override
-  Future<void> hide(int id) async => _window?.invokeMethod((w) => w.hide());
+  Future<void> hide(int id) async => _w(id)?.invokeMethod((w) => w.hide());
   @override
-  Future<void> hideTitle(int id) async => _window?.invokeMethod(
+  Future<void> hideTitle(int id) async => _w(id)?.invokeMethod(
     (w) => w.titleBarStyle = TitleBarStyle.hidden,
   );
   @override
   Future<void> maximize(int id) async =>
-      _window?.invokeMethod((w) => w.maximize());
+      _w(id)?.invokeMethod((w) => w.maximize());
   @override
   Future<void> minimize(int id) async =>
-      _window?.invokeMethod((w) => w.minimize());
+      _w(id)?.invokeMethod((w) => w.minimize());
   @override
   Future<void> restore(int id) async {
-    final w = _window;
+    final w = _w(id);
     if (w == null) return;
     if (w.invokeGetter(() => w.isFullScreen, orElse: false)) {
       w.invokeMethod((w) => w.isFullScreen = false);
@@ -64,10 +73,10 @@ class YaruWindowManager extends YaruWindowPlatform {
   }
 
   @override
-  Future<void> show(int id) async => _window?.invokeMethod((w) => w.show());
+  Future<void> show(int id) async => _w(id)?.invokeMethod((w) => w.show());
   @override
   Future<void> showMenu(int id) async {
-    final w = _window;
+    final w = _w(id);
     if (w == null) return;
     _guard(() {
       if (!Window.isSystemMenuSupported()) return;
@@ -80,13 +89,13 @@ class YaruWindowManager extends YaruWindowPlatform {
   }
 
   @override
-  Future<void> showTitle(int id) async => _window?.invokeMethod(
+  Future<void> showTitle(int id) async => _w(id)?.invokeMethod(
     (w) => w.titleBarStyle = TitleBarStyle.normal,
   );
 
   @override
   Future<void> setBackground(int id, Color color) async =>
-      _window?.invokeMethod((w) => w.backgroundColor = color.toNative());
+      _w(id)?.invokeMethod((w) => w.backgroundColor = color.toNative());
   @override
   Future<void> setBrightness(int id, Brightness brightness) async {
     _guard(
@@ -99,36 +108,63 @@ class YaruWindowManager extends YaruWindowPlatform {
 
   @override
   Future<void> setTitle(int id, String title) async {
-    _window?.invokeMethod((w) => w.title = title);
-    await _listener._updateState();
+    _w(id)?.invokeMethod((w) => w.title = title);
+    await _listener(id)._updateState();
   }
 
   @override
   Future<void> setMinimizable(int id, bool minimizable) async {
-    _window?.invokeMethod((w) => w.isMinimizable = minimizable);
-    await _listener._updateState();
+    _w(id)?.invokeMethod((w) => w.isMinimizable = minimizable);
+    await _listener(id)._updateState();
   }
 
   @override
   Future<void> setMaximizable(int id, bool maximizable) async {
-    _window?.invokeMethod((w) => w.isMaximizable = maximizable);
-    await _listener._updateState();
+    _w(id)?.invokeMethod((w) => w.isMaximizable = maximizable);
+    await _listener(id)._updateState();
   }
 
   @override
   Future<void> setClosable(int id, bool closable) async {
-    _window?.invokeMethod((w) => w.isClosable = closable);
-    await _listener._updateState();
+    _w(id)?.invokeMethod((w) => w.isClosable = closable);
+    await _listener(id)._updateState();
   }
 
   @override
-  Future<YaruWindowState> state(int id) async => _window.state();
+  Future<void> setControlButtonsVisible(int id, bool visible) async =>
+      _w(id)?.invokeMethod((w) => w.isWindowControlButtonsVisible = visible);
   @override
-  Stream<YaruWindowState> states(int id) => _listener.states();
+  Future<void> setResizable(int id, bool resizable) async =>
+      _w(id)?.invokeMethod((w) => w.isResizable = resizable);
+  @override
+  Future<void> setMinimumSize(int id, Size size) async =>
+      _w(id)?.invokeMethod((w) => w.minimumSize = size.toNative());
+  @override
+  Future<void> setMaximumSize(int id, Size size) async =>
+      _w(id)?.invokeMethod((w) => w.maximumSize = size.toNative());
+  @override
+  Future<void> setSize(int id, Size size) async =>
+      _w(id)?.invokeMethod((w) => w.setSize(size.toNative(), false));
+  @override
+  Future<void> setPosition(int id, Offset position) async =>
+      _w(id)?.invokeMethod((w) => w.position = position.toNative());
+  @override
+  Future<void> center(int id) async => _w(id)?.invokeMethod((w) => w.center());
+  @override
+  Future<void> setAlwaysOnTop(int id, bool alwaysOnTop) async =>
+      _w(id)?.invokeMethod((w) => w.isAlwaysOnTop = alwaysOnTop);
+  @override
+  Future<void> setSkipTaskbar(int id, bool skip) async =>
+      _w(id)?.invokeMethod((w) => w.isVisibleInTaskbar = !skip);
+
+  @override
+  Future<YaruWindowState> state(int id) async => _w(id).state();
+  @override
+  Stream<YaruWindowState> states(int id) => _listener(id).states();
 
   @override
   Future<void> onClose(int id, FutureOr<bool> Function() handler) async {
-    _closeListener.addCloseHandler(handler);
+    _closeListener(id).addCloseHandler(handler);
   }
 }
 

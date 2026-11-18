@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:nativeapi/nativeapi.dart' as native show Color;
+import 'package:nativeapi/nativeapi.dart' as native show Color, Size;
 import 'package:window_manager/window_manager.dart';
 import 'package:yaru_window_manager/src/window_manager.dart';
 import 'package:yaru_window_platform_interface/yaru_window_platform_interface.dart';
@@ -13,6 +13,7 @@ void main() {
     registerFallbackValue(const native.Color(r: 0, g: 0, b: 0, a: 255));
     registerFallbackValue((WindowEvent _) {});
     registerFallbackValue(TitleBarStyle.normal);
+    registerFallbackValue(const native.Size(width: 0, height: 0));
   });
 
   test('register', () {
@@ -65,6 +66,29 @@ void main() {
 
     await YaruWindowPlatform.instance.setClosable(0, true);
     verify(() => window.isClosable = true).called(1);
+  });
+
+  test('new window controls', () async {
+    final window = mockWindow();
+    final platform = YaruWindowManager(window);
+
+    await platform.setControlButtonsVisible(0, false);
+    verify(() => window.isWindowControlButtonsVisible = false).called(1);
+
+    await platform.setResizable(0, false);
+    verify(() => window.isResizable = false).called(1);
+
+    await platform.setAlwaysOnTop(0, true);
+    verify(() => window.isAlwaysOnTop = true).called(1);
+
+    await platform.setSkipTaskbar(0, true);
+    verify(() => window.isVisibleInTaskbar = false).called(1);
+
+    await platform.center(0);
+    verify(window.center).called(1);
+
+    await platform.setSize(0, const Size(400, 300));
+    verify(() => window.setSize(any(), false)).called(1);
   });
 
   test('restore', () async {
